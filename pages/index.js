@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend, BarChart, Bar
+  CartesianGrid, Legend
 } from "recharts";
 import "../styles/styles.css"; // Import Updated Styling
 
@@ -111,6 +111,12 @@ export default function Home() {
       setProfessorData([]);
       setBestProfessor(null);
     }
+    // If `loading` is not needed, remove it
+  // OR use it in your component
+  if (loading) {
+    return <p>Loading...</p>;
+  }
+
     setLoading(false);
   };
 
