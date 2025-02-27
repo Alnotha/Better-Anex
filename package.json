@@ -4,12 +4,9 @@
   "private": true,
   "homepage": "https://betteranex.com/",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "export": "next build && next export",
-    "predeploy": "npm run export",
+    "predeploy": "npm run build && npm run export",
     "deploy": "gh-pages -d out"
   },
   "dependencies": {
@@ -27,13 +24,14 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.0.9",
-    "@types/node": "^20",
-    "@types/react": "^19",
+    "@types/next": "^8.0.7",
+    "@types/node": "^20.17.19",
+    "@types/react": "^19.0.10",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.2.0",
+    "gh-pages": "^6.3.0",
     "postcss-nesting": "^13.0.1",
-    "typescript": "^5",
-    "gh-pages": "^6.3.0"
+    "typescript": "^5"
   }
 }

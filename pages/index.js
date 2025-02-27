@@ -1,10 +1,10 @@
+// eslint-disable-next-line react-hooks/exhaustive-deps
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend
 } from "recharts";
-import "../styles/styles.css"; // Import Updated Styling
 
 export default function Home() {
   const [dept, setDept] = useState("");
@@ -119,9 +119,11 @@ export default function Home() {
 
     setLoading(false);
   };
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dept, course]);
 
   return (

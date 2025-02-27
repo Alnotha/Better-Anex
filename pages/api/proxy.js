@@ -1,5 +1,4 @@
 import axios from "axios";
-import "../styles/styles.css"; // ✅ Correct way
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
