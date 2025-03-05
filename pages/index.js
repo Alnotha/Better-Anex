@@ -2,9 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css"; // Bootstrap for layout, etc.
-import styles from "../styles/styles.module.css"; 
-  // Import your custom CSS module (see below). 
-  // Alternatively, if you have a global CSS, use: import "../styles/styles.css";
+import styles from "../styles/styles.module.css";
 
 // Recharts Imports
 import {
@@ -38,7 +36,7 @@ const gradeColors = {
   D: "#ff9800",
   F: "#f44336",
   I: "#9c27b0",
-  Q: "#607d8b",
+  Q: "#607d8b", // Q grade color
 };
 
 export default function HomePage() {
@@ -62,8 +60,8 @@ export default function HomePage() {
   const [expandedGroups, setExpandedGroups] = useState({});
   const [onlyFive, setOnlyFive] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
-  const [yearRange, setYearRange] = useState('all');
-  const [gradeDistView, setGradeDistView] = useState('combined');
+  const [yearRange, setYearRange] = useState("all");
+  const [gradeDistView, setGradeDistView] = useState("combined");
 
   // ---------- Bookmarks ----------
   const [bookmarks, setBookmarks] = useState(() => {
@@ -84,12 +82,23 @@ export default function HomePage() {
     }
   }, [bookmarks]);
 
+  // ---------- Close bookmark dropdown on scroll ----------
+  useEffect(() => {
+    function handleScroll() {
+      setShowBookmarks(false);
+    }
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   // Utility for semester sorting
   const semesterOrder = { SPRING: 1, SUMMER: 2, FALL: 3 };
 
   // ---------- FILTER DATA FOR TIME RANGE ----------
   const getTimeFilteredData = () => {
-    if (yearRange === 'all') {
+    if (yearRange === "all") {
       return rawData;
     }
     const currentYear = new Date().getFullYear();
@@ -102,7 +111,7 @@ export default function HomePage() {
     const deptToUse = deptParam || dept;
     const courseToUse = courseParam || course;
     if (!deptToUse || !courseToUse) return;
-    
+
     // Clear existing data before loading
     setRawData([]);
     setChartData([]);
@@ -134,7 +143,7 @@ export default function HomePage() {
           const F = parseInt(cls.F, 10) || 0;
           const I = parseInt(cls.I, 10) || 0;
           const Q = parseInt(cls.Q, 10) || 0;
-          
+
           const totalStudents = A + B + C + D + F + I + Q;
           const gpa = cls.gpa ? parseFloat(cls.gpa) : NaN;
 
@@ -145,19 +154,19 @@ export default function HomePage() {
             professor: cls.prof,
             gpa: gpa,
             totalStudents,
-            section: cls.section || '-',
-            A: A,
-            B: B,
-            C: C,
-            D: D,
-            F: F,
-            I: I,
-            Q: Q,
+            section: cls.section || "-",
+            A,
+            B,
+            C,
+            D,
+            F,
+            I,
+            Q,
           };
         });
         setRawData(classes);
         // Set year range to 'all' for new data
-        setYearRange('all');
+        setYearRange("all");
       } else {
         setRawData([]);
         alert("No data found for this class.");
@@ -321,33 +330,35 @@ export default function HomePage() {
         I: parseInt(row.I, 10) || 0,
         Q: parseInt(row.Q, 10) || 0,
         gpa: parseFloat(row.gpa) || NaN,
-        section: row.section || '-'
+        section: row.section || "-",
       };
       grouped[groupKey].push(processedRow);
     });
 
     // Add empty entries for professors with no data in certain years
-    selectedProfessors.forEach(prof => {
-      const years = [...new Set(tableDataSorted.map(r => r.year))];
-      years.forEach(year => {
-        const semesters = ['SPRING', 'SUMMER', 'FALL'];
-        semesters.forEach(sem => {
+    selectedProfessors.forEach((prof) => {
+      const years = [...new Set(tableDataSorted.map((r) => r.year))];
+      years.forEach((year) => {
+        const semesters = ["SPRING", "SUMMER", "FALL"];
+        semesters.forEach((sem) => {
           const key = `${year}-${sem}-${prof}`;
           if (!grouped[key]) {
-            grouped[key] = [{
-              year: year,
-              semester: sem,
-              professor: prof,
-              gpa: NaN,
-              section: '-',
-              A: 0,
-              B: 0,
-              C: 0,
-              D: 0,
-              F: 0,
-              I: 0,
-              Q: 0
-            }];
+            grouped[key] = [
+              {
+                year: year,
+                semester: sem,
+                professor: prof,
+                gpa: NaN,
+                section: "-",
+                A: 0,
+                B: 0,
+                C: 0,
+                D: 0,
+                F: 0,
+                I: 0,
+                Q: 0,
+              },
+            ];
           }
         });
       });
@@ -391,28 +402,40 @@ export default function HomePage() {
 
     // Calculate individual professor grade distributions
     const profDistributions = {};
-    selectedProfessors.forEach(prof => {
-      const profData = stArr.map(year => {
-        const yearData = filteredData.filter(r => 
-          r.year === parseInt(year.year) && 
-          r.professor === prof
+    selectedProfessors.forEach((prof) => {
+      const profData = stArr.map((year) => {
+        const yearData = filteredData.filter(
+          (r) => r.year === parseInt(year.year) && r.professor === prof
         );
-        
+
         if (yearData.length === 0) {
           return {
             year: year.year,
-            A: 0, B: 0, C: 0, D: 0, F: 0, I: 0, Q: 0
+            A: 0,
+            B: 0,
+            C: 0,
+            D: 0,
+            F: 0,
+            I: 0,
+            Q: 0,
           };
         }
 
-        const total = yearData.reduce((sum, r) => 
-          sum + r.A + r.B + r.C + r.D + r.F + r.I + r.Q, 0
+        const total = yearData.reduce(
+          (sum, r) => sum + r.A + r.B + r.C + r.D + r.F + r.I + r.Q,
+          0
         );
 
         if (total === 0) {
           return {
             year: year.year,
-            A: 0, B: 0, C: 0, D: 0, F: 0, I: 0, Q: 0
+            A: 0,
+            B: 0,
+            C: 0,
+            D: 0,
+            F: 0,
+            I: 0,
+            Q: 0,
           };
         }
 
@@ -424,7 +447,7 @@ export default function HomePage() {
           D: yearData.reduce((sum, r) => sum + r.D, 0) / total,
           F: yearData.reduce((sum, r) => sum + r.F, 0) / total,
           I: yearData.reduce((sum, r) => sum + r.I, 0) / total,
-          Q: yearData.reduce((sum, r) => sum + r.Q, 0) / total
+          Q: yearData.reduce((sum, r) => sum + r.Q, 0) / total,
         };
       });
       profDistributions[prof] = profData;
@@ -483,7 +506,7 @@ export default function HomePage() {
     setLoading(false);
     setOnlyFive(false);
     setShowBookmarks(false);
-    setYearRange('all'); // Reset to 'all' when clearing
+    setYearRange("all"); // Reset to 'all' when clearing
   }
 
   // ---------- RENDER ----------
@@ -502,11 +525,13 @@ export default function HomePage() {
               Better Anex
             </span>
             <div className={`${styles["navbar-subtitle"]} ${styles["text"]}`}>
-              <span><span className={styles["navbar-link"]}>Developed by Alyan Tharani</span> </span>
+              <span>
+                <span className={styles["navbar-link"]}>Developed by Alyan Tharani</span>{" "}
+              </span>
               <span className={styles["navbar-divider"]}>|</span>
-              <a 
-                href="https://alyantharani.com" 
-                target="_blank" 
+              <a
+                href="https://alyantharani.com"
+                target="_blank"
                 rel="noopener noreferrer"
                 className={styles["navbar-link"]}
               >
@@ -633,40 +658,40 @@ export default function HomePage() {
                         interval="preserveStartEnd"
                         minTickGap={20}
                       />
-                      <YAxis 
+                      <YAxis
                         domain={[
                           (dataMin) => Math.floor(dataMin * 2) / 2,
-                          4.0
+                          4.0,
                         ]}
                         tickFormatter={(val) => val.toFixed(2)}
                         ticks={(() => {
                           // Calculate minimum GPA from all professor data
                           const minGPA = Math.min(
-                            ...chartData.flatMap(row => 
+                            ...chartData.flatMap((row) =>
                               Object.entries(row)
-                                .filter(([key]) => key !== 'yearSemester')
+                                .filter(([key]) => key !== "yearSemester")
                                 .map(([_, value]) => value)
-                                .filter(val => val !== null)
+                                .filter((val) => val !== null)
                             )
                           );
                           const startValue = Math.floor(minGPA * 2) / 2;
                           return Array.from(
                             { length: Math.floor((4.0 - startValue) / 0.5) + 1 },
-                            (_, i) => startValue + (i * 0.5)
+                            (_, i) => startValue + i * 0.5
                           );
                         })()}
                       />
-                      <Tooltip 
+                      <Tooltip
                         contentStyle={{
-                          backgroundColor: '#1a1a1a',
-                          border: '1px solid #333',
-                          borderRadius: '8px',
-                          color: '#fff'
+                          backgroundColor: "#1a1a1a",
+                          border: "1px solid #333",
+                          borderRadius: "8px",
+                          color: "#fff",
                         }}
-                        labelStyle={{ color: '#4a90e2', fontWeight: 600 }}
-                        itemStyle={{ color: '#fff' }}
+                        labelStyle={{ color: "#4a90e2", fontWeight: 600 }}
+                        itemStyle={{ color: "#fff" }}
                         formatter={(value, name) => {
-                          if (value === null) return ['No data', name];
+                          if (value === null) return ["No data", name];
                           return [`${value.toFixed(3)}`, name];
                         }}
                       />
@@ -698,40 +723,34 @@ export default function HomePage() {
                 <div className={styles["professor-controls"]}>
                   <div className={styles["year-range-selector"]}>
                     <button
-                      onClick={() => setYearRange('all')}
-                      className={yearRange === 'all' ? styles["active-year-button"] : ""}
+                      onClick={() => setYearRange("all")}
+                      className={yearRange === "all" ? styles["active-year-button"] : ""}
                     >
                       All Time
                     </button>
                     <button
-                      onClick={() => setYearRange('2')}
-                      className={yearRange === '2' ? styles["active-year-button"] : ""}
+                      onClick={() => setYearRange("2")}
+                      className={yearRange === "2" ? styles["active-year-button"] : ""}
                     >
                       2 Years
                     </button>
                     <button
-                      onClick={() => setYearRange('3')}
-                      className={yearRange === '3' ? styles["active-year-button"] : ""}
+                      onClick={() => setYearRange("3")}
+                      className={yearRange === "3" ? styles["active-year-button"] : ""}
                     >
                       3 Years
                     </button>
                     <button
-                      onClick={() => setYearRange('5')}
-                      className={yearRange === '5' ? styles["active-year-button"] : ""}
+                      onClick={() => setYearRange("5")}
+                      className={yearRange === "5" ? styles["active-year-button"] : ""}
                     >
                       5 Years
                     </button>
                   </div>
-                  <button
-                    onClick={() =>
-                      setSelectedProfessors(professorData.map((p) => p.professor))
-                    }
-                  >
+                  <button onClick={() => setSelectedProfessors(professorData.map((p) => p.professor))}>
                     Select All
                   </button>
-                  <button
-                    onClick={() => setSelectedProfessors([])}
-                  >
+                  <button onClick={() => setSelectedProfessors([])}>
                     Unselect All
                   </button>
                 </div>
@@ -774,9 +793,7 @@ export default function HomePage() {
                         <p>{bestProfessor.professor}</p>
                         <p>Avg GPA: {bestProfessor.avgGpa.toFixed(2)}</p>
                         <p style={{ fontStyle: "italic" }}>
-                          {yearRange === 'all' 
-                            ? "(All Time)" 
-                            : `(Last ${yearRange} Years)`}
+                          {yearRange === "all" ? "(All Time)" : `(Last ${yearRange} Years)`}
                         </p>
                         <div className="mt-3">
                           <h3>Rate My Professor</h3>
@@ -809,9 +826,13 @@ export default function HomePage() {
                           innerRadius={60}
                           outerRadius={80}
                           fill="#8884d8"
-                          label={({ name, percent }) =>
-                            `${name}: ${(percent * 100).toFixed(0)}%`
-                          }
+                          label={({ name, value }) => {
+                            // Recompute percentage for the label
+                            const total = gradeDistribution.reduce((acc, slice) => acc + slice.value, 0);
+                            if (total === 0) return `${name}: 0%`;
+                            const percent = (value / total) * 100;
+                            return `${name}: ${percent.toFixed(0)}%`;
+                          }}
                         >
                           {gradeDistribution.map((entry) => (
                             <Cell
@@ -820,7 +841,22 @@ export default function HomePage() {
                             />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#1a1a1a",
+                            border: "1px solid #333",
+                            borderRadius: "4px",
+                            color: "#fff",
+                          }}
+                          labelStyle={{ color: "#fff" }}
+                          formatter={(value, name) => {
+                            // Compute percentage for the tooltip
+                            const total = gradeDistribution.reduce((acc, slice) => acc + slice.value, 0);
+                            if (total === 0) return ["0%", name];
+                            const percent = (value / total) * 100;
+                            return [`${percent.toFixed(1)}%`, name];
+                          }}
+                        />
                       </PieChart>
                     </div>
                   </div>
@@ -833,47 +869,54 @@ export default function HomePage() {
               <div className={`mt-4 ${styles["chart-wrapper"]}`}>
                 <div className={styles["chart-header"]}>
                   <h2 className="text-center">
-                    Letter Grade Distribution {yearRange === 'all' ? 'All Time' : `Last ${yearRange} Years`}
+                    Letter Grade Distribution{" "}
+                    {yearRange === "all" ? "All Time" : `Last ${yearRange} Years`}
                   </h2>
                   <div className={styles["view-toggle"]}>
                     <button
-                      onClick={() => setGradeDistView('combined')}
-                      className={gradeDistView === 'combined' ? styles["active-view-button"] : ""}
+                      onClick={() => setGradeDistView("combined")}
+                      className={gradeDistView === "combined" ? styles["active-view-button"] : ""}
                     >
                       Combined View
                     </button>
                     <button
-                      onClick={() => setGradeDistView('individual')}
-                      className={gradeDistView === 'individual' ? styles["active-view-button"] : ""}
+                      onClick={() => setGradeDistView("individual")}
+                      className={gradeDistView === "individual" ? styles["active-view-button"] : ""}
                     >
                       Individual Professors
                     </button>
                   </div>
                 </div>
-                <div style={{ width: "100%", height: gradeDistView === 'combined' ? "300px" : "auto" }}>
-                  <ResponsiveContainer width="100%" height={gradeDistView === 'combined' ? "100%" : "300px"}>
-                    {gradeDistView === 'combined' ? (
+                <div
+                  style={{
+                    width: "100%",
+                    height: gradeDistView === "combined" ? "300px" : "auto",
+                  }}
+                >
+                  <ResponsiveContainer
+                    width="100%"
+                    height={gradeDistView === "combined" ? "100%" : "300px"}
+                  >
+                    {gradeDistView === "combined" ? (
                       <BarChart data={stackedData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                         <XAxis dataKey="year" stroke="#fff" />
-                        <YAxis 
-                          domain={[0, 1]} 
+                        <YAxis
+                          domain={[0, 1]}
                           tickFormatter={(val) => `${(val * 100).toFixed(0)}%`}
                           stroke="#fff"
                         />
-                        <Tooltip 
+                        <Tooltip
                           formatter={(value) => `${(value * 100).toFixed(1)}%`}
                           contentStyle={{
-                            backgroundColor: '#1a1a1a',
-                            border: '1px solid #333',
-                            borderRadius: '4px',
-                            color: '#fff'
+                            backgroundColor: "#1a1a1a",
+                            border: "1px solid #333",
+                            borderRadius: "4px",
+                            color: "#fff",
                           }}
-                          labelStyle={{ color: '#fff' }}
+                          labelStyle={{ color: "#fff" }}
                         />
-                        <Legend 
-                          wrapperStyle={{ color: '#fff' }}
-                        />
+                        <Legend wrapperStyle={{ color: "#fff" }} />
                         <ReferenceLine y={0} stroke="#333" />
                         <Bar dataKey="A" stackId="grades" fill={gradeColors.A} />
                         <Bar dataKey="B" stackId="grades" fill={gradeColors.B} />
@@ -887,11 +930,17 @@ export default function HomePage() {
                       <div className={styles["professor-chart-container"]}>
                         {selectedProfessors.length > 0 ? (
                           selectedProfessors
-                            .filter(prof => {
+                            .filter((prof) => {
                               const profData = professorGradeDistributions[prof] || [];
-                              return profData.some(year => 
-                                year.A > 0 || year.B > 0 || year.C > 0 || 
-                                year.D > 0 || year.F > 0 || year.I > 0 || year.Q > 0
+                              return profData.some(
+                                (year) =>
+                                  year.A > 0 ||
+                                  year.B > 0 ||
+                                  year.C > 0 ||
+                                  year.D > 0 ||
+                                  year.F > 0 ||
+                                  year.I > 0 ||
+                                  year.Q > 0
                               );
                             })
                             .map((prof) => (
@@ -901,32 +950,32 @@ export default function HomePage() {
                                   <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={professorGradeDistributions[prof] || []}>
                                       <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                                      <XAxis 
-                                        dataKey="year" 
+                                      <XAxis
+                                        dataKey="year"
                                         stroke="#fff"
                                         angle={-45}
                                         textAnchor="end"
                                         height={60}
                                         interval="preserveStartEnd"
                                       />
-                                      <YAxis 
-                                        domain={[0, 1]} 
+                                      <YAxis
+                                        domain={[0, 1]}
                                         tickFormatter={(val) => `${(val * 100).toFixed(0)}%`}
                                         stroke="#fff"
                                         width={60}
                                       />
-                                      <Tooltip 
+                                      <Tooltip
                                         formatter={(value) => `${(value * 100).toFixed(1)}%`}
                                         contentStyle={{
-                                          backgroundColor: '#1a1a1a',
-                                          border: '1px solid #333',
-                                          borderRadius: '4px',
-                                          color: '#fff'
+                                          backgroundColor: "#1a1a1a",
+                                          border: "1px solid #333",
+                                          borderRadius: "4px",
+                                          color: "#fff",
                                         }}
-                                        labelStyle={{ color: '#fff' }}
+                                        labelStyle={{ color: "#fff" }}
                                       />
-                                      <Legend 
-                                        wrapperStyle={{ color: '#fff' }}
+                                      <Legend
+                                        wrapperStyle={{ color: "#fff" }}
                                         verticalAlign="top"
                                         height={36}
                                       />
@@ -944,8 +993,15 @@ export default function HomePage() {
                               </div>
                             ))
                         ) : (
-                          <div style={{ textAlign: 'center', color: '#fff', padding: '2rem' }}>
-                            Please select at least one professor to view individual grade distributions
+                          <div
+                            style={{
+                              textAlign: "center",
+                              color: "#fff",
+                              padding: "2rem",
+                            }}
+                          >
+                            Please select at least one professor to view individual grade
+                            distributions
                           </div>
                         )}
                       </div>
@@ -989,11 +1045,11 @@ export default function HomePage() {
                           const [year, sem, prof] = key.split("-");
                           const rows = groupedData[key];
                           const isExpanded = expandedGroups[key] || false;
-                          
+
                           // Calculate group GPA
                           let totalWeightedGPA = 0;
                           let totalStudents = 0;
-                          
+
                           rows.forEach((r) => {
                             const stCount = r.A + r.B + r.C + r.D + r.F + r.I + r.Q;
                             if (!isNaN(r.gpa) && stCount > 0) {
@@ -1001,14 +1057,29 @@ export default function HomePage() {
                               totalStudents += stCount;
                             }
                           });
-                          
-                          const groupGPA = totalStudents > 0 ? (totalWeightedGPA / totalStudents).toFixed(2) : null;
 
-                          // Only render if there's a valid GPA
+                          const groupGPA =
+                            totalStudents > 0 ? (totalWeightedGPA / totalStudents).toFixed(2) : null;
+
+                          // If there's no valid GPA, skip
                           if (groupGPA === null) return null;
+
+                          // Letter grade totals for the group row
+                          const totalStudentsGroup = rows.reduce(
+                            (sum, r) => sum + r.A + r.B + r.C + r.D + r.F + r.I + r.Q,
+                            0
+                          );
+                          const totalA = rows.reduce((sum, r) => sum + r.A, 0);
+                          const totalB = rows.reduce((sum, r) => sum + r.B, 0);
+                          const totalC = rows.reduce((sum, r) => sum + r.C, 0);
+                          const totalD = rows.reduce((sum, r) => sum + r.D, 0);
+                          const totalF = rows.reduce((sum, r) => sum + r.F, 0);
+                          const totalI = rows.reduce((sum, r) => sum + r.I, 0);
+                          const totalQ = rows.reduce((sum, r) => sum + r.Q, 0);
 
                           return (
                             <React.Fragment key={key}>
+                              {/* Group Row */}
                               <tr
                                 onClick={() => toggleGroup(key)}
                                 style={{ cursor: "pointer", backgroundColor: "#2a2a2a" }}
@@ -1016,54 +1087,73 @@ export default function HomePage() {
                                 <td className={styles["table-cell"]}>
                                   {`${year} ${sem} - ${prof}`} {isExpanded ? "▼" : "▶"}
                                 </td>
+                                {/* Overall GPA in second column */}
                                 <td className={styles["table-cell"]}>{groupGPA}</td>
-                                {(() => {
-                                  const totalStudents = rows.reduce((sum, r) => 
-                                    sum + r.A + r.B + r.C + r.D + r.F + r.I + r.Q, 0
-                                  );
-                                  if (totalStudents === 0) return null;
-                                  
-                                  const totalA = rows.reduce((sum, r) => sum + r.A, 0);
-                                  const totalB = rows.reduce((sum, r) => sum + r.B, 0);
-                                  const totalC = rows.reduce((sum, r) => sum + r.C, 0);
-                                  const totalD = rows.reduce((sum, r) => sum + r.D, 0);
-                                  const totalF = rows.reduce((sum, r) => sum + r.F, 0);
-                                  const totalI = rows.reduce((sum, r) => sum + r.I, 0);
-                                  const totalQ = rows.reduce((sum, r) => sum + r.Q, 0);
+                                {/* Section column is blank for group row */}
+                                <td className={styles["table-cell"]}></td>
 
-                                  return (
-                                    <>
-                                      <td className={styles["table-cell"]}>{`${totalA} (${((totalA/totalStudents)*100).toFixed(1)}%)`}</td>
-                                      <td className={styles["table-cell"]}>{`${totalB} (${((totalB/totalStudents)*100).toFixed(1)}%)`}</td>
-                                      <td className={styles["table-cell"]}>{`${totalC} (${((totalC/totalStudents)*100).toFixed(1)}%)`}</td>
-                                      <td className={styles["table-cell"]}>{`${totalD} (${((totalD/totalStudents)*100).toFixed(1)}%)`}</td>
-                                      <td className={styles["table-cell"]}>{`${totalF} (${((totalF/totalStudents)*100).toFixed(1)}%)`}</td>
-                                      <td className={styles["table-cell"]}>{`${totalI} (${((totalI/totalStudents)*100).toFixed(1)}%)`}</td>
-                                      <td className={styles["table-cell"]}>{`${totalQ} (${((totalQ/totalStudents)*100).toFixed(1)}%)`}</td>
-                                    </>
-                                  );
-                                })()}
+                                {/* Totals for A, B, C, D, F, I, Q */}
+                                <td className={styles["table-cell"]}>
+                                  {`${totalA} (${((totalA / totalStudentsGroup) * 100).toFixed(1)}%)`}
+                                </td>
+                                <td className={styles["table-cell"]}>
+                                  {`${totalB} (${((totalB / totalStudentsGroup) * 100).toFixed(1)}%)`}
+                                </td>
+                                <td className={styles["table-cell"]}>
+                                  {`${totalC} (${((totalC / totalStudentsGroup) * 100).toFixed(1)}%)`}
+                                </td>
+                                <td className={styles["table-cell"]}>
+                                  {`${totalD} (${((totalD / totalStudentsGroup) * 100).toFixed(1)}%)`}
+                                </td>
+                                <td className={styles["table-cell"]}>
+                                  {`${totalF} (${((totalF / totalStudentsGroup) * 100).toFixed(1)}%)`}
+                                </td>
+                                <td className={styles["table-cell"]}>
+                                  {`${totalI} (${((totalI / totalStudentsGroup) * 100).toFixed(1)}%)`}
+                                </td>
+                                <td className={styles["table-cell"]}>
+                                  {`${totalQ} (${((totalQ / totalStudentsGroup) * 100).toFixed(1)}%)`}
+                                </td>
                               </tr>
-                              {isExpanded ? (
-                                rows.map((child, idx) => {
-                                  const sectionTotal = child.A + child.B + child.C + child.D + child.F + child.I + child.Q;
-                                  // Only show expanded rows with valid GPA
-                                  if (isNaN(child.gpa) || sectionTotal === 0) return null;
-                                  return (
-                                    <tr key={idx} style={{ backgroundColor: "#1e1e1e" }}>
-                                      <td className={styles["table-cell"]}>{child.gpa.toFixed(2)}</td>
-                                      <td className={styles["table-cell"]}>{child.section}</td>
-                                      <td className={styles["table-cell"]}>{child.A}</td>
-                                      <td className={styles["table-cell"]}>{child.B}</td>
-                                      <td className={styles["table-cell"]}>{child.C}</td>
-                                      <td className={styles["table-cell"]}>{child.D}</td>
-                                      <td className={styles["table-cell"]}>{child.F}</td>
-                                      <td className={styles["table-cell"]}>{child.I}</td>
-                                      <td className={styles["table-cell"]}>{child.Q}</td>
-                                    </tr>
-                                  );
-                                })
-                              ) : null}
+
+                              {/* Expanded Rows */}
+                              {isExpanded
+                                ? rows.map((child, idx) => {
+                                    const sectionTotal =
+                                      child.A +
+                                      child.B +
+                                      child.C +
+                                      child.D +
+                                      child.F +
+                                      child.I +
+                                      child.Q;
+                                    // Only show expanded rows with valid GPA
+                                    if (isNaN(child.gpa) || sectionTotal === 0) return null;
+
+                                    return (
+                                      <tr key={idx} style={{ backgroundColor: "#1e1e1e" }}>
+                                        {/* Blank cell under Group */}
+                                        <td className={styles["table-cell"]}></td>
+                                        {/* GPA in second column */}
+                                        <td className={styles["table-cell"]}>
+                                          {child.gpa.toFixed(2)}
+                                        </td>
+                                        {/* Section in third column */}
+                                        <td className={styles["table-cell"]}>
+                                          {child.section}
+                                        </td>
+                                        {/* Grades */}
+                                        <td className={styles["table-cell"]}>{child.A}</td>
+                                        <td className={styles["table-cell"]}>{child.B}</td>
+                                        <td className={styles["table-cell"]}>{child.C}</td>
+                                        <td className={styles["table-cell"]}>{child.D}</td>
+                                        <td className={styles["table-cell"]}>{child.F}</td>
+                                        <td className={styles["table-cell"]}>{child.I}</td>
+                                        <td className={styles["table-cell"]}>{child.Q}</td>
+                                      </tr>
+                                    );
+                                  })
+                                : null}
                             </React.Fragment>
                           );
                         })}
