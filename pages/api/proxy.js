@@ -2,13 +2,16 @@ import axios from "axios";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
+    return res.setHeader("Allow", ["POST"]).status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
+    // ✅ Ensure we properly parse the body (for Vercel)
+    const requestBody = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+
     const response = await axios.post(
       "https://anex.us/grades/getData/",
-      new URLSearchParams(req.body),
+      new URLSearchParams(requestBody), // Ensure body is formatted properly
       {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       }
