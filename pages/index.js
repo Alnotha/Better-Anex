@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css"; // Bootstrap for layout, etc.
@@ -39,6 +39,30 @@ const gradeColors = {
   Q: "#607d8b", // Q grade color
 };
 
+// Custom tooltip for LineChart that shows professor name in its respective color
+const CustomLineChartTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div
+        style={{
+          backgroundColor: "#1a1a1a",
+          border: "1px solid #333",
+          borderRadius: "8px",
+          padding: "8px",
+        }}
+      >
+        <p style={{ color: "white", fontWeight: "600", margin: 0 }}>{label}</p>
+        {payload.map((entry, index) => (
+          <p key={index} style={{ color: entry.stroke || "#fff", margin: 0 }}>
+            {entry.name}: {entry.value === null ? "No data" : entry.value.toFixed(3)}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function HomePage() {
   const [dept, setDept] = useState("");
   const [course, setCourse] = useState("");
@@ -72,8 +96,8 @@ export default function HomePage() {
     return [];
   });
 
-  // Add new state for professor list collapse
-  const [isProfessorListCollapsed, setIsProfessorListCollapsed] = useState(false);
+  // Ref for bookmark panel to detect outside clicks
+  const bookmarkPanelRef = useRef(null);
 
   // Save bookmarks to localStorage
   useEffect(() => {
@@ -90,6 +114,19 @@ export default function HomePage() {
     window.addEventListener("scroll", handleScroll);
     return () => {
       window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  // ---------- Close bookmark dropdown on clicking outside ----------
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (bookmarkPanelRef.current && !bookmarkPanelRef.current.contains(event.target)) {
+        setShowBookmarks(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -319,7 +356,6 @@ export default function HomePage() {
       if (!grouped[groupKey]) {
         grouped[groupKey] = [];
       }
-      // Ensure all numeric values are properly parsed
       const processedRow = {
         ...row,
         A: parseInt(row.A, 10) || 0,
@@ -335,7 +371,6 @@ export default function HomePage() {
       grouped[groupKey].push(processedRow);
     });
 
-    // Add empty entries for professors with no data in certain years
     selectedProfessors.forEach((prof) => {
       const years = [...new Set(tableDataSorted.map((r) => r.year))];
       years.forEach((year) => {
@@ -400,14 +435,12 @@ export default function HomePage() {
     stArr.sort((a, b) => parseInt(a.year) - parseInt(b.year));
     setStackedData(stArr);
 
-    // Calculate individual professor grade distributions
     const profDistributions = {};
     selectedProfessors.forEach((prof) => {
       const profData = stArr.map((year) => {
         const yearData = filteredData.filter(
           (r) => r.year === parseInt(year.year) && r.professor === prof
         );
-
         if (yearData.length === 0) {
           return {
             year: year.year,
@@ -420,12 +453,10 @@ export default function HomePage() {
             Q: 0,
           };
         }
-
         const total = yearData.reduce(
           (sum, r) => sum + r.A + r.B + r.C + r.D + r.F + r.I + r.Q,
           0
         );
-
         if (total === 0) {
           return {
             year: year.year,
@@ -438,7 +469,6 @@ export default function HomePage() {
             Q: 0,
           };
         }
-
         return {
           year: year.year,
           A: yearData.reduce((sum, r) => sum + r.A, 0) / total,
@@ -506,8 +536,17 @@ export default function HomePage() {
     setLoading(false);
     setOnlyFive(false);
     setShowBookmarks(false);
-    setYearRange("all"); // Reset to 'all' when clearing
+    setYearRange("all");
   }
+
+  // ---------- Handle form submission (Enter key triggers this) ----------
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    fetchData();
+  };
+
+  // Determine if current class is bookmarked for button feedback
+  const isBookmarked = dept && course && bookmarks.some((b) => b.dept === dept && b.course === course);
 
   // ---------- RENDER ----------
   return (
@@ -552,7 +591,7 @@ export default function HomePage() {
 
       {/* Bookmarks Panel */}
       {showBookmarks && (
-        <div className={styles["bookmark-panel"]}>
+        <div ref={bookmarkPanelRef} className={styles["bookmark-panel"]}>
           <h3>Bookmarked Classes</h3>
           {bookmarks.length === 0 && <p>No bookmarks yet.</p>}
           {bookmarks.map((bm, idx) => (
@@ -582,49 +621,45 @@ export default function HomePage() {
 
       {/* Main Container */}
       <div className={`container ${styles["main-container"]}`}>
-        {/* Form Row */}
-        <div className="row mb-3">
-          <div className="col-md-3 col-sm-6 mb-2">
-            <input
-              type="text"
-              placeholder="Department (e.g. CSCE)"
-              value={dept}
-              onChange={(e) => setDept(e.target.value.toUpperCase())}
-              className={`${styles["input-box"]} w-100`}
-            />
+        {/* Form Row wrapped in a form so Enter submits */}
+        <form onSubmit={handleSubmit}>
+          <div className="row mb-3">
+            <div className="col-md-3 col-sm-6 mb-2">
+              <input
+                type="text"
+                placeholder="Department (e.g. CSCE)"
+                value={dept}
+                onChange={(e) => setDept(e.target.value.toUpperCase())}
+                className={`${styles["input-box"]} w-100`}
+              />
+            </div>
+            <div className="col-md-3 col-sm-6 mb-2">
+              <input
+                type="text"
+                placeholder="Course (e.g. 121)"
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+                className={`${styles["input-box"]} w-100`}
+              />
+            </div>
+            <div className="col-md-3 col-sm-6 mb-2">
+              <button type="submit" className="btn btn-primary w-100">
+                Submit
+              </button>
+            </div>
+            <div className="col-md-3 col-sm-6 mb-2">
+              <button
+                type="button"
+                onClick={handleBookmark}
+                className="btn btn-secondary w-100"
+              >
+                {isBookmarked ? "Bookmarked" : "Bookmark This Class"}
+              </button>
+            </div>
           </div>
-          <div className="col-md-3 col-sm-6 mb-2">
-            <input
-              type="text"
-              placeholder="Course (e.g. 121)"
-              value={course}
-              onChange={(e) => setCourse(e.target.value)}
-              className={`${styles["input-box"]} w-100`}
-            />
-          </div>
-          <div className="col-md-3 col-sm-6 mb-2">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                fetchData();
-              }}
-              className="btn btn-primary w-100"
-            >
-              Submit
-            </button>
-          </div>
-          <div className="col-md-3 col-sm-6 mb-2">
-            <button
-              type="button"
-              onClick={handleBookmark}
-              className="btn btn-secondary w-100"
-            >
-              Bookmark This Class
-            </button>
-          </div>
-        </div>
+        </form>
 
-        {/* Loading Animation - Only show when actively loading */}
+        {/* Loading Animation */}
         {loading && (
           <div className={styles["loading-container"]}>
             <div className={styles["loading-spinner"]}>
@@ -640,7 +675,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Only render content if we have data and not loading */}
+        {/* Render content if data exists and not loading */}
         {!loading && rawData.length > 0 && (
           <>
             {/* GPA Over the Years */}
@@ -665,7 +700,6 @@ export default function HomePage() {
                         ]}
                         tickFormatter={(val) => val.toFixed(2)}
                         ticks={(() => {
-                          // Calculate minimum GPA from all professor data
                           const minGPA = Math.min(
                             ...chartData.flatMap((row) =>
                               Object.entries(row)
@@ -681,20 +715,7 @@ export default function HomePage() {
                           );
                         })()}
                       />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#1a1a1a",
-                          border: "1px solid #333",
-                          borderRadius: "8px",
-                          color: "#fff",
-                        }}
-                        labelStyle={{ color: "#4a90e2", fontWeight: 600 }}
-                        itemStyle={{ color: "#fff" }}
-                        formatter={(value, name) => {
-                          if (value === null) return ["No data", name];
-                          return [`${value.toFixed(3)}`, name];
-                        }}
-                      />
+                      <Tooltip content={<CustomLineChartTooltip />} />
                       {professorData
                         .filter((p) => selectedProfessors.includes(p.professor))
                         .map((p) => (
@@ -718,7 +739,7 @@ export default function HomePage() {
 
             {/* Main content row */}
             <div className="row mt-4">
-              {/* Professor section (70%) */}
+              {/* Professor Section (70%) */}
               <div className={styles["professor-section"]}>
                 <div className={styles["professor-controls"]}>
                   <div className={styles["year-range-selector"]}>
@@ -782,9 +803,8 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Stats section (30%) */}
+              {/* Stats Section (30%) */}
               <div className={styles["stats-section"]}>
-                {/* Best Professor */}
                 {bestProfessor && (
                   <div className="mb-3">
                     <div className={styles["content-card"]}>
@@ -816,7 +836,7 @@ export default function HomePage() {
                   <div className={styles["content-card"]}>
                     <h2>Grade Distribution</h2>
                     <div className={styles["pie-chart-container"]}>
-                      <PieChart width={240} height={240}>
+                      <PieChart width={240} height={240} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                         <Pie
                           data={gradeDistribution}
                           dataKey="value"
@@ -827,7 +847,6 @@ export default function HomePage() {
                           outerRadius={80}
                           fill="#8884d8"
                           label={({ name, value }) => {
-                            // Recompute percentage for the label
                             const total = gradeDistribution.reduce((acc, slice) => acc + slice.value, 0);
                             if (total === 0) return `${name}: 0%`;
                             const percent = (value / total) * 100;
@@ -835,10 +854,7 @@ export default function HomePage() {
                           }}
                         >
                           {gradeDistribution.map((entry) => (
-                            <Cell
-                              key={`cell-${entry.name}`}
-                              fill={gradeColors[entry.name] || "#8884d8"}
-                            />
+                            <Cell key={`cell-${entry.name}`} fill={gradeColors[entry.name] || "#8884d8"} />
                           ))}
                         </Pie>
                         <Tooltip
@@ -850,7 +866,6 @@ export default function HomePage() {
                           }}
                           labelStyle={{ color: "#fff" }}
                           formatter={(value, name) => {
-                            // Compute percentage for the tooltip
                             const total = gradeDistribution.reduce((acc, slice) => acc + slice.value, 0);
                             if (total === 0) return ["0%", name];
                             const percent = (value / total) * 100;
@@ -869,8 +884,7 @@ export default function HomePage() {
               <div className={`mt-4 ${styles["chart-wrapper"]}`}>
                 <div className={styles["chart-header"]}>
                   <h2 className="text-center">
-                    Letter Grade Distribution{" "}
-                    {yearRange === "all" ? "All Time" : `Last ${yearRange} Years`}
+                    Letter Grade Distribution {yearRange === "all" ? "All Time" : `Last ${yearRange} Years`}
                   </h2>
                   <div className={styles["view-toggle"]}>
                     <button
@@ -974,11 +988,7 @@ export default function HomePage() {
                                         }}
                                         labelStyle={{ color: "#fff" }}
                                       />
-                                      <Legend
-                                        wrapperStyle={{ color: "#fff" }}
-                                        verticalAlign="top"
-                                        height={36}
-                                      />
+                                      <Legend wrapperStyle={{ color: "#fff" }} verticalAlign="top" height={36} />
                                       <ReferenceLine y={0} stroke="#333" />
                                       <Bar dataKey="A" stackId="grades" fill={gradeColors.A} />
                                       <Bar dataKey="B" stackId="grades" fill={gradeColors.B} />
@@ -993,15 +1003,8 @@ export default function HomePage() {
                               </div>
                             ))
                         ) : (
-                          <div
-                            style={{
-                              textAlign: "center",
-                              color: "#fff",
-                              padding: "2rem",
-                            }}
-                          >
-                            Please select at least one professor to view individual grade
-                            distributions
+                          <div style={{ textAlign: "center", color: "#fff", padding: "2rem" }}>
+                            Please select at least one professor to view individual grade distributions
                           </div>
                         )}
                       </div>
@@ -1046,7 +1049,6 @@ export default function HomePage() {
                           const rows = groupedData[key];
                           const isExpanded = expandedGroups[key] || false;
 
-                          // Calculate group GPA
                           let totalWeightedGPA = 0;
                           let totalStudents = 0;
 
@@ -1061,10 +1063,8 @@ export default function HomePage() {
                           const groupGPA =
                             totalStudents > 0 ? (totalWeightedGPA / totalStudents).toFixed(2) : null;
 
-                          // If there's no valid GPA, skip
                           if (groupGPA === null) return null;
 
-                          // Letter grade totals for the group row
                           const totalStudentsGroup = rows.reduce(
                             (sum, r) => sum + r.A + r.B + r.C + r.D + r.F + r.I + r.Q,
                             0
@@ -1079,7 +1079,6 @@ export default function HomePage() {
 
                           return (
                             <React.Fragment key={key}>
-                              {/* Group Row */}
                               <tr
                                 onClick={() => toggleGroup(key)}
                                 style={{ cursor: "pointer", backgroundColor: "#2a2a2a" }}
@@ -1087,12 +1086,8 @@ export default function HomePage() {
                                 <td className={styles["table-cell"]}>
                                   {`${year} ${sem} - ${prof}`} {isExpanded ? "▼" : "▶"}
                                 </td>
-                                {/* Overall GPA in second column */}
                                 <td className={styles["table-cell"]}>{groupGPA}</td>
-                                {/* Section column is blank for group row */}
                                 <td className={styles["table-cell"]}></td>
-
-                                {/* Totals for A, B, C, D, F, I, Q */}
                                 <td className={styles["table-cell"]}>
                                   {`${totalA} (${((totalA / totalStudentsGroup) * 100).toFixed(1)}%)`}
                                 </td>
@@ -1115,8 +1110,6 @@ export default function HomePage() {
                                   {`${totalQ} (${((totalQ / totalStudentsGroup) * 100).toFixed(1)}%)`}
                                 </td>
                               </tr>
-
-                              {/* Expanded Rows */}
                               {isExpanded
                                 ? rows.map((child, idx) => {
                                     const sectionTotal =
@@ -1127,22 +1120,16 @@ export default function HomePage() {
                                       child.F +
                                       child.I +
                                       child.Q;
-                                    // Only show expanded rows with valid GPA
                                     if (isNaN(child.gpa) || sectionTotal === 0) return null;
-
                                     return (
                                       <tr key={idx} style={{ backgroundColor: "#1e1e1e" }}>
-                                        {/* Blank cell under Group */}
                                         <td className={styles["table-cell"]}></td>
-                                        {/* GPA in second column */}
                                         <td className={styles["table-cell"]}>
                                           {child.gpa.toFixed(2)}
                                         </td>
-                                        {/* Section in third column */}
                                         <td className={styles["table-cell"]}>
                                           {child.section}
                                         </td>
-                                        {/* Grades */}
                                         <td className={styles["table-cell"]}>{child.A}</td>
                                         <td className={styles["table-cell"]}>{child.B}</td>
                                         <td className={styles["table-cell"]}>{child.C}</td>
